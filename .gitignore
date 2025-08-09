@@ -1,0 +1,35 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+.env.*
+.uv/
+
+# results & logs
+results/
+*.jsonl
+*.csv
+*.ncu-rep
+*.qdrep
+*.nsys-rep
+
+# build artifacts
+build/
+benchmarks/cuda/*.o
+benchmarks/cuda/shared_mem_bw
+benchmarks/cuda/warp_divergence
+benchmarks/cuda/global_mem_latency
+benchmarks/cuda/occupancy
+
+# editors
+.vscode/
+.idea/
+
+# metadata
+*.egg-info/
+
+# binaries
+*.so
