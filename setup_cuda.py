@@ -6,30 +6,32 @@ CUDA setup script.
 import os
 import sys
 from pathlib import Path
-from setuptools import setup
-from torch.utils.cpp_extension import CUDAExtension, BuildExtension
+
 import torch
+from setuptools import setup
+from torch.utils.cpp_extension import BuildExtension, CUDAExtension
+
 
 def setup_cuda_extensions():
     """Set up CUDA extensions with proper compiler settings."""
-    
+
     if not torch.cuda.is_available():
         print("❌ CUDA not available, cannot build CUDA extensions")
         sys.exit(1)
-    
+
     print("✅ CUDA detected, proceeding with build...")
-    
+
     # default GCC and try to work around compatibility issues
     os.environ.pop("CC", None)
     os.environ.pop("CXX", None)
-    
+
     # default system paths
     cuda_home = "/usr/lib/nvidia-cuda-toolkit"
     os.environ["CUDA_HOME"] = cuda_home
-    
+
     project_root = Path(__file__).parent
     kernels_dir = project_root / "kernels"
-    
+
     print(f"Kernels directory: {kernels_dir}")
 
     # verify source files exist
@@ -46,14 +48,16 @@ def setup_cuda_extensions():
     if not header_file.exists():
         print(f"❌ CUDA header file not found: {header_file}")
         sys.exit(1)
-    
+
     print("✅ All source files found")
-    
+
     # Get CUDA compute capability
     try:
         device = torch.cuda.get_device_properties(0)
         compute_capability = f"{device.major}{device.minor}"
-        arch_flags = [f"-gencode=arch=compute_{compute_capability},code=sm_{compute_capability}"]
+        arch_flags = [
+            f"-gencode=arch=compute_{compute_capability},code=sm_{compute_capability}"
+        ]
         print(f"Target GPU compute capability: {compute_capability}")
     except:
         # fallback to common architectures
@@ -63,7 +67,7 @@ def setup_cuda_extensions():
             "-gencode=arch=compute_86,code=sm_86",  # RTX 30xx
         ]
         print("Using fallback GPU architectures")
-    
+
     # define the CUDA extension
     cuda_extension = CUDAExtension(
         name="cuda_kernels",
@@ -75,17 +79,18 @@ def setup_cuda_extensions():
             str(kernels_dir),
         ],
         extra_compile_args={
-            'cxx': [
-                '-O3', 
-                '-DWITH_CUDA',
-                '-fPIC',
+            "cxx": [
+                "-O3",
+                "-DWITH_CUDA",
+                "-fPIC",
             ],
-            'nvcc': [
-                '-O3',
-                '--use_fast_math',
-                '-DWITH_CUDA',
-                '--expt-relaxed-constexpr',
-            ] + arch_flags,
+            "nvcc": [
+                "-O3",
+                "--use_fast_math",
+                "-DWITH_CUDA",
+                "--expt-relaxed-constexpr",
+            ]
+            + arch_flags,
         },
         verbose=True,
     )
@@ -94,9 +99,10 @@ def setup_cuda_extensions():
     setup(
         name="cuda_kernels",
         ext_modules=[cuda_extension],
-        cmdclass={'build_ext': BuildExtension},
+        cmdclass={"build_ext": BuildExtension},
         zip_safe=False,
     )
+
 
 if __name__ == "__main__":
     setup_cuda_extensions()

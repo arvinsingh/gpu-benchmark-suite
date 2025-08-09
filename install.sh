@@ -30,11 +30,11 @@ print_error() {
 
 check_cuda() {
     print_status "Checking CUDA installation..."
-    
+
     if command -v nvcc &> /dev/null; then
         CUDA_VERSION=$(nvcc --version | grep "release" | awk '{print $5}' | cut -d',' -f1)
         print_status "CUDA version: $CUDA_VERSION"
-        
+
         if command -v nvidia-smi &> /dev/null; then
             DRIVER_VERSION=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader,nounits | head -1)
             print_status "NVIDIA Driver version: $DRIVER_VERSION"
@@ -50,11 +50,11 @@ check_cuda() {
 
 check_python() {
     print_status "Checking Python version..."
-    
+
     PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}')
     PYTHON_MAJOR=$(echo $PYTHON_VERSION | cut -d'.' -f1)
     PYTHON_MINOR=$(echo $PYTHON_VERSION | cut -d'.' -f2)
-    
+
     if [ "$PYTHON_MAJOR" -eq 3 ] && [ "$PYTHON_MINOR" -ge 11 ]; then
         print_status "Python version: $PYTHON_VERSION ✓"
     else
@@ -65,7 +65,7 @@ check_python() {
 
 install_system_deps() {
     print_status "Installing system dependencies..."
-    
+
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
         # Linux
         if command -v apt-get &> /dev/null; then
@@ -87,7 +87,7 @@ install_system_deps() {
 
 setup_python_env() {
     print_status "Setting up Python environment..."
-    
+
     # check if uv available
     if command -v uv &> /dev/null; then
         print_status "Using uv for package management"
@@ -105,14 +105,14 @@ setup_python_env() {
 
 build_cuda_kernels() {
     print_status "Building CUDA kernels..."
-    
+
     if [ -f ".venv/bin/activate" ]; then
         source .venv/bin/activate
     fi
-    
+
     # build CUDA extensions
     python setup_cuda.py build_ext --inplace
-    
+
     if [ $? -eq 0 ]; then
         print_status "CUDA kernels built successfully ✓"
     else
@@ -122,11 +122,11 @@ build_cuda_kernels() {
 
 install_dev_deps() {
     print_status "Installing development dependencies..."
-    
+
     if [ -f ".venv/bin/activate" ]; then
         source .venv/bin/activate
     fi
-    
+
     if command -v uv &> /dev/null; then
         uv pip install -e ".[dev,docs,profiling]"
     else
@@ -136,14 +136,14 @@ install_dev_deps() {
 
 run_tests() {
     print_status "Running tests..."
-    
+
     if [ -f ".venv/bin/activate" ]; then
         source .venv/bin/activate
     fi
-    
+
     # run basic tests (excluding CUDA-specific ones if no GPU)
     pytest tests/ -v --tb=short
-    
+
     if [ $? -eq 0 ]; then
         print_status "Tests passed ✓"
     else
@@ -153,22 +153,22 @@ run_tests() {
 
 setup_pre_commit() {
     print_status "Setting up pre-commit hooks..."
-    
+
     if [ -f ".venv/bin/activate" ]; then
         source .venv/bin/activate
     fi
-    
+
     pre-commit install
     print_status "Pre-commit hooks installed ✓"
 }
 
 verify_installation() {
     print_status "Verifying installation..."
-    
+
     if [ -f ".venv/bin/activate" ]; then
         source .venv/bin/activate
     fi
-    
+
     # CLI test
     if gpu-bench --help &> /dev/null; then
         print_status "CLI working ✓"
@@ -176,7 +176,7 @@ verify_installation() {
         print_error "CLI installation failed"
         return 1
     fi
-    
+
     # test Python import
     python -c "import gpu_benchmark; print('✓ Package import successful')"
 
@@ -217,7 +217,7 @@ show_usage() {
 main() {
     echo "Starting installation process..."
     echo ""
-    
+
     check_python
     check_cuda
     install_system_deps

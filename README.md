@@ -137,4 +137,3 @@ Note: Currently only `01_cuda_basics` example is implemented. Additional example
 - Python 3.11+
 - PyTorch 2.0+
 - Triton 2.0+
-

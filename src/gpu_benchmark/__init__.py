@@ -15,6 +15,6 @@ from .core.metrics import MetricsCollector
 
 __all__ = [
     "BenchmarkRunner",
-    "DeviceInfo", 
+    "DeviceInfo",
     "MetricsCollector",
 ]

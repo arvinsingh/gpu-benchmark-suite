@@ -2,14 +2,16 @@
 Memory-related benchmarks comparing CUDA, Triton, and PyTorch implementations.
 """
 
+from typing import Tuple
+
+import numpy as np
 import torch
 import triton
 import triton.language as tl
-import numpy as np
-from typing import Tuple
 
 try:
     import cuda_kernels
+
     CUDA_AVAILABLE = True
 except ImportError:
     CUDA_AVAILABLE = False
@@ -18,6 +20,7 @@ except ImportError:
 # =============================================================================
 # Vector Addition Benchmarks
 # =============================================================================
+
 
 def vector_add_pytorch(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """PyTorch vector addition implementation."""
@@ -34,17 +37,17 @@ def vector_add_triton_kernel(
 ):
     """Triton kernel for vector addition."""
     pid = tl.program_id(axis=0)
-    
+
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
-    
+
     mask = offsets < n_elements
-    
+
     x = tl.load(x_ptr + offsets, mask=mask)
     y = tl.load(y_ptr + offsets, mask=mask)
-    
+
     output = x + y
-    
+
     tl.store(output_ptr + offsets, output, mask=mask)
 
 
@@ -52,14 +55,12 @@ def vector_add_triton(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Triton vector addition implementation."""
     n_elements = a.numel()
     output = torch.empty_like(a)
-    
+
     BLOCK_SIZE = 1024
     grid = (triton.cdiv(n_elements, BLOCK_SIZE),)
-    
-    vector_add_triton_kernel[grid](
-        a, b, output, n_elements, BLOCK_SIZE=BLOCK_SIZE
-    )
-    
+
+    vector_add_triton_kernel[grid](a, b, output, n_elements, BLOCK_SIZE=BLOCK_SIZE)
+
     return output
 
 
@@ -71,8 +72,9 @@ def vector_add_cuda(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 
 
 # =============================================================================
-# Vector Multiplication Benchmarks  
+# Vector Multiplication Benchmarks
 # =============================================================================
+
 
 def vector_mul_pytorch(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """PyTorch vector multiplication implementation."""
@@ -81,7 +83,10 @@ def vector_mul_pytorch(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 
 @triton.jit
 def vector_mul_triton_kernel(
-    x_ptr, y_ptr, output_ptr, n_elements,
+    x_ptr,
+    y_ptr,
+    output_ptr,
+    n_elements,
     BLOCK_SIZE: tl.constexpr,
 ):
     """Triton kernel for element-wise vector multiplication."""
@@ -89,11 +94,11 @@ def vector_mul_triton_kernel(
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
     mask = offsets < n_elements
-    
+
     x = tl.load(x_ptr + offsets, mask=mask)
     y = tl.load(y_ptr + offsets, mask=mask)
     output = x * y
-    
+
     tl.store(output_ptr + offsets, output, mask=mask)
 
 
@@ -101,14 +106,12 @@ def vector_mul_triton(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
     """Triton vector multiplication implementation."""
     n_elements = a.numel()
     output = torch.empty_like(a)
-    
+
     BLOCK_SIZE = 1024
     grid = (triton.cdiv(n_elements, BLOCK_SIZE),)
-    
-    vector_mul_triton_kernel[grid](
-        a, b, output, n_elements, BLOCK_SIZE=BLOCK_SIZE
-    )
-    
+
+    vector_mul_triton_kernel[grid](a, b, output, n_elements, BLOCK_SIZE=BLOCK_SIZE)
+
     return output
 
 
@@ -123,6 +126,7 @@ def vector_mul_cuda(a: torch.Tensor, b: torch.Tensor) -> torch.Tensor:
 # Memory Bandwidth Benchmarks
 # =============================================================================
 
+
 def memory_copy_pytorch(a: torch.Tensor) -> torch.Tensor:
     """PyTorch memory copy (bandwidth test)."""
     return a.clone()
@@ -130,7 +134,9 @@ def memory_copy_pytorch(a: torch.Tensor) -> torch.Tensor:
 
 @triton.jit
 def memory_copy_triton_kernel(
-    input_ptr, output_ptr, n_elements,
+    input_ptr,
+    output_ptr,
+    n_elements,
     BLOCK_SIZE: tl.constexpr,
 ):
     """Triton kernel for memory copy."""
@@ -138,7 +144,7 @@ def memory_copy_triton_kernel(
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
     mask = offsets < n_elements
-    
+
     data = tl.load(input_ptr + offsets, mask=mask)
     tl.store(output_ptr + offsets, data, mask=mask)
 
@@ -147,14 +153,12 @@ def memory_copy_triton(a: torch.Tensor) -> torch.Tensor:
     """Triton memory copy implementation."""
     n_elements = a.numel()
     output = torch.empty_like(a)
-    
+
     BLOCK_SIZE = 1024
     grid = (triton.cdiv(n_elements, BLOCK_SIZE),)
-    
-    memory_copy_triton_kernel[grid](
-        a, output, n_elements, BLOCK_SIZE=BLOCK_SIZE
-    )
-    
+
+    memory_copy_triton_kernel[grid](a, output, n_elements, BLOCK_SIZE=BLOCK_SIZE)
+
     return output
 
 
@@ -169,14 +173,18 @@ def memory_copy_cuda(a: torch.Tensor) -> torch.Tensor:
 # Memory Access Pattern Benchmarks
 # =============================================================================
 
+
 def strided_access_pytorch(a: torch.Tensor, stride: int = 2) -> torch.Tensor:
     """PyTorch strided memory access."""
     return a[::stride]
 
 
-@triton.jit  
+@triton.jit
 def strided_access_triton_kernel(
-    input_ptr, output_ptr, n_elements, stride,
+    input_ptr,
+    output_ptr,
+    n_elements,
+    stride,
     BLOCK_SIZE: tl.constexpr,
 ):
     """Triton kernel for strided memory access."""
@@ -184,10 +192,10 @@ def strided_access_triton_kernel(
     block_start = pid * BLOCK_SIZE
     offsets = block_start + tl.arange(0, BLOCK_SIZE)
     mask = offsets < n_elements
-    
+
     input_offsets = offsets * stride
     input_mask = input_offsets < (n_elements * stride)
-    
+
     data = tl.load(input_ptr + input_offsets, mask=input_mask & mask)
     tl.store(output_ptr + offsets, data, mask=mask)
 
@@ -196,14 +204,14 @@ def strided_access_triton(a: torch.Tensor, stride: int = 2) -> torch.Tensor:
     """Triton strided memory access implementation."""
     n_elements = (a.numel() + stride - 1) // stride  # Output size
     output = torch.empty(n_elements, device=a.device, dtype=a.dtype)
-    
+
     BLOCK_SIZE = 1024
     grid = (triton.cdiv(n_elements, BLOCK_SIZE),)
-    
+
     strided_access_triton_kernel[grid](
         a, output, n_elements, stride, BLOCK_SIZE=BLOCK_SIZE
     )
-    
+
     return output
 
 
@@ -217,6 +225,7 @@ def strided_access_cuda(a: torch.Tensor, stride: int = 2) -> torch.Tensor:
 # =============================================================================
 # Performance Counter Functions
 # =============================================================================
+
 
 def vector_flops_counter(a: torch.Tensor, b: torch.Tensor) -> float:
     """Count FLOPS for vector operations (one operation per element)."""
@@ -250,41 +259,46 @@ def strided_bandwidth_counter(a: torch.Tensor, stride: int = 2) -> float:
 # Benchmark Registration
 # =============================================================================
 
+
 def register_memory_benchmarks(runner):
     """Register all memory benchmarks with the runner."""
-    
+
     # Vector addition
     runner.register_benchmark(
-        "memory", "vector-add",
+        "memory",
+        "vector-add",
         cuda_impl=vector_add_cuda if CUDA_AVAILABLE else None,
         triton_impl=vector_add_triton,
         pytorch_impl=vector_add_pytorch,
         flops_counter=vector_flops_counter,
         bandwidth_counter=vector_bandwidth_counter,
     )
-    
-    # Vector multiplication  
+
+    # Vector multiplication
     runner.register_benchmark(
-        "memory", "vector-mul",
+        "memory",
+        "vector-mul",
         cuda_impl=vector_mul_cuda if CUDA_AVAILABLE else None,
         triton_impl=vector_mul_triton,
         pytorch_impl=vector_mul_pytorch,
         flops_counter=vector_flops_counter,
         bandwidth_counter=vector_bandwidth_counter,
     )
-    
+
     # Memory copy
     runner.register_benchmark(
-        "memory", "memory-copy",
+        "memory",
+        "memory-copy",
         cuda_impl=memory_copy_cuda if CUDA_AVAILABLE else None,
         triton_impl=memory_copy_triton,
         pytorch_impl=memory_copy_pytorch,
         bandwidth_counter=memory_copy_bandwidth_counter,
     )
-    
+
     # Strided access
     runner.register_benchmark(
-        "memory", "strided-access",
+        "memory",
+        "strided-access",
         cuda_impl=strided_access_cuda if CUDA_AVAILABLE else None,
         triton_impl=strided_access_triton,
         pytorch_impl=strided_access_pytorch,
